@@ -25,6 +25,10 @@ class ValueIterationAgent(ValueEstimationAgent):
         for a given number of iterations using the supplied
         discount factor.
     """
+
+    MIN_VALUE = -99999999
+    MAX_VALUE = 99999999
+
     def __init__(self, mdp, discount = 0.9, iterations = 100):
         """
           Your value iteration agent should take an mdp on
@@ -43,23 +47,30 @@ class ValueIterationAgent(ValueEstimationAgent):
         self.iterations = iterations
         self.values = util.Counter() # A Counter is a dict with default 0
 
-        self.qValue = util.Counter()
-        epsilon = 0.001
         R = mdp.getReward
         T = mdp.getTransitionStatesAndProbs
-        gamma = self.discount
-        i = 0
-        while i < iterations:
-            i = i + 1
+        gamma = discount
+        count = 0
+        while count < iterations:
+            count += 1
             U = self.values.copy()
-            delta = 0
-            for s in mdp.getStates():
-                if mdp.isTerminal(s):
-                    self.values[s] = R(s, None, None)
+            for state in mdp.getStates():
+                if mdp.isTerminal(state):
+                    self.values[state] = R(state, None, None)
                 else:
-                    self.values[s] = R(s, None, None) + gamma * max([sum([p * U[s1] for (s1,p) in T(s,a)]) for a in mdp.getPossibleActions(s)])
+                    maxStateActionValue = self.MIN_VALUE
+                    bestAction = None
+                    maxNextState = None
+                    for action in mdp.getPossibleActions(state):
+                        stateActionValue = 0
+                        for nextState, prob in T(state, action):
+                            stateActionValue += (prob * U[nextState])
+                        if stateActionValue > maxStateActionValue:
+                            maxStateActionValue = stateActionValue
+                            bestAction = action
+                            maxNextState = nextState
+                    self.values[state] = R(state, bestAction, maxNextState) + ( gamma * maxStateActionValue )
 
-            #self.values[s] = mdp.getReward(s, None, None) + gamma * max([sum([p * U[s1] for (s1,p) in mdp.getTransitionStatesAndProbs(s,act)]) for act in mdp.getPossibleActions(s)])
 
     def getValue(self, state):
         """
@@ -75,10 +86,12 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         T = self.mdp.getTransitionStatesAndProbs
         R = self.mdp.getReward
+        gamma = self.discount
 
-        qValue = R(state, None, None) + self.discount * sum([p * self.values[s1] for (s1,p) in T(state,action)])
-        self.qValue[state, action] = qValue
-        return qValue
+        stateActionValue = 0
+        for nextState, prob in T(state, action):
+            stateActionValue += R(state, None, None) + (gamma * ( prob * self.values[nextState] ) )
+        return stateActionValue
 
     def computeActionFromValues(self, state):
         """
@@ -92,18 +105,18 @@ class ValueIterationAgent(ValueEstimationAgent):
         if self.mdp.isTerminal(state):
             return None
 
-        act = None
-        v = -999999999
+        bestAction = None
+        maxValue = self.MIN_VALUE
         R = self.mdp.getReward
         T = self.mdp.getTransitionStatesAndProbs
-        for a in self.mdp.getPossibleActions(state):
-            r = 0
-            for s1, p in T(state, a):
-                r = r + self.values[s1] * p
-            if  r > v:
-                v = r
-                act = a
-        return act
+        for action in self.mdp.getPossibleActions(state):
+            value = 0
+            for nextState, prob in T(state, action):
+                value = value + self.values[nextState] * prob
+            if  value > maxValue:
+                maxValue = value
+                bestAction = action
+        return bestAction
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
