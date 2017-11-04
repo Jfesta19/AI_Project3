@@ -38,6 +38,9 @@ class QLearningAgent(ReinforcementAgent):
         - self.getLegalActions(state)
           which returns legal actions for a state
     """
+    MIN_VALUE = -999999
+    MAX_VALUE = 999999
+
     def __init__(self, **args):
         "You can initialize Q-values here..."
         ReinforcementAgent.__init__(self, **args)
@@ -50,7 +53,7 @@ class QLearningAgent(ReinforcementAgent):
           Should return 0.0 if we have never seen a state
           or the Q node value otherwise
         """
-        return self.Q[state, action]
+        return self.Q[ (state, action) ]
 
     def computeValueFromQValues(self, state):
         """
@@ -59,16 +62,15 @@ class QLearningAgent(ReinforcementAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return a value of 0.0.
         """
-
-        if len(self.getLegalActions(state)) == 0:
-            return 0.0
         actions = self.getLegalActions(state)
-        best = -99999999.99
-        for a in actions:
-            V = self.getQValue(state, a)
-            if V > best:
-                best = V
-        return best
+        if len( actions ) == 0:
+            return 0.0
+        bestValue = self.MIN_VALUE
+        for action in actions:
+            actionValue = self.getQValue(state, action)
+            if actionValue > bestValue:
+                bestValue = actionValue
+        return bestValue
 
     def computeActionFromQValues(self, state):
         """
@@ -76,18 +78,18 @@ class QLearningAgent(ReinforcementAgent):
           are no legal actions, which is the case at the terminal state,
           you should return None.
         """
-        if len(self.getLegalActions(state)) == 0:
+        if len( self.getLegalActions(state) ) == 0:
             return None
-        bestVal = -99999999
-        bestAct = None
-        for a in self.getLegalActions(state):
-            V = self.getQValue(state, a)
-            if V > bestVal:
-                bestVal = V
-                bestAct = a
-            elif self.Q[state, a] == bestVal:
-                bestAct = random.choice([a, bestAct])
-        return bestAct
+        bestValue = self.MIN_VALUE
+        bestAction = None
+        for action in self.getLegalActions(state):
+            actionValue = self.getQValue(state, action)
+            if actionValue > bestValue:
+                bestValue = actionValue
+                bestAction = action
+            elif actionValue == bestValue:
+                bestAction = random.choice([action, bestAction])
+        return bestAction
 
 
     def getAction(self, state):
@@ -103,11 +105,12 @@ class QLearningAgent(ReinforcementAgent):
         """
         # Pick Action
         legalActions = self.getLegalActions(state)
-        action = None
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
-        return action
+        if util.flipCoin(self.epsilon):
+            return random.choice(legalActions)
+
+        return self.computeActionFromQValues(state)
 
     def update(self, state, action, nextState, reward):
         """
@@ -118,17 +121,21 @@ class QLearningAgent(ReinforcementAgent):
           NOTE: You should never call this function,
           it will be called on your behalf
         """
-        bestV = -999999
-        V = self.getQValue(state, action)
+
+        bestValue = self.MIN_VALUE
+        bestAction = None
+        currentQValue = self.getQValue(state, action)
+
         if len(self.getLegalActions(nextState)) == 0:
-            bestV = self.getQValue(nextState, action)
-        for a in self.getLegalActions(nextState):
-            nV = self.getQValue(nextState, a)
-            if nV > bestV:
-                bestV = nV
-        QV = V + self.alpha * (reward + self.discount * bestV - V)
-        self.Q[state,action] = QV
-        return QV
+            bestValue = 0
+        else:
+            for act in self.getLegalActions(nextState):
+                nextQValue = self.getQValue(nextState, act)
+                if nextQValue > bestValue:
+                    bestValue = nextQValue
+                    bestAction = act
+        updatedQValue = currentQValue + ( self.alpha * ( reward + (self.discount * bestValue) - currentQValue ) )
+        self.Q[ (state, action) ] = updatedQValue
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
