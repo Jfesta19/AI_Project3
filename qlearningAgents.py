@@ -192,7 +192,11 @@ class ApproximateQAgent(PacmanQAgent):
         return self.weights
 
     def getQValue(self, state, action):
-        qValue = self.Q[ (state, action) ]
+        qValue = 0
+        features = self.featExtractor.getFeatures(state, action)
+        w = self.getWeights()
+        for f in features:
+            qValue += features[f] * w[f]
         return qValue
 
     def update(self, state, action, nextState, reward):
@@ -211,15 +215,10 @@ class ApproximateQAgent(PacmanQAgent):
                 nextQValue = self.getQValue(nextState, act)
                 if nextQValue > maxQValue:
                     maxQValue = nextQValue
-        difference = ( reward + ( self.discount * maxQValue) ) - currentQValue
-        approximateQ = 0
-        for feature, value in features.items():
-            currentWeight = self.weights[ feature ]
-            updatedWeight = currentWeight + (self.alpha * difference)*value
-            self.weights[ feature ] = updatedWeight
-            approximateQ += updatedWeight
 
-        self.Q[ (state, action) ] = approximateQ
+        difference = ( reward + ( self.discount * maxQValue) ) - currentQValue
+        for f in features:
+            self.weights[f] = self.weights[f] + (self.alpha * difference)* features[f]
 
 
     def final(self, state):
