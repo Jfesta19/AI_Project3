@@ -123,7 +123,6 @@ class QLearningAgent(ReinforcementAgent):
         """
 
         bestValue = self.MIN_VALUE
-        bestAction = None
         currentQValue = self.getQValue(state, action)
 
         if len(self.getLegalActions(nextState)) == 0:
@@ -133,7 +132,6 @@ class QLearningAgent(ReinforcementAgent):
                 nextQValue = self.getQValue(nextState, act)
                 if nextQValue > bestValue:
                     bestValue = nextQValue
-                    bestAction = act
         updatedQValue = currentQValue + ( self.alpha * ( reward + (self.discount * bestValue) - currentQValue ) )
         self.Q[ (state, action) ] = updatedQValue
 
@@ -184,6 +182,7 @@ class ApproximateQAgent(PacmanQAgent):
        and update.  All other QLearningAgent functions
        should work as is.
     """
+
     def __init__(self, extractor='IdentityExtractor', **args):
         self.featExtractor = util.lookup(extractor, globals())()
         PacmanQAgent.__init__(self, **args)
@@ -193,27 +192,41 @@ class ApproximateQAgent(PacmanQAgent):
         return self.weights
 
     def getQValue(self, state, action):
-        """
-          Should return Q(state,action) = w * featureVector
-          where * is the dotProduct operator
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        qValue = self.Q[ (state, action) ]
+        return qValue
 
     def update(self, state, action, nextState, reward):
         """
            Should update your weights based on transition
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        currentQValue = self.getQValue(state, action)
+        actions = self.getLegalActions(nextState)
+        features = self.featExtractor.getFeatures(state, action)
+        maxQValue = self.MIN_VALUE
+
+        if len(actions) == 0:
+            maxQValue = 0
+        else:
+            for act in actions:
+                nextQValue = self.getQValue(nextState, act)
+                if nextQValue > maxQValue:
+                    maxQValue = nextQValue
+        difference = ( reward + ( self.discount * maxQValue) ) - currentQValue
+        approximateQ = 0
+        for feature, value in features.items():
+            currentWeight = self.weights[ feature ]
+            updatedWeight = currentWeight + (self.alpha * difference)*value
+            self.weights[ feature ] = updatedWeight
+            approximateQ += updatedWeight
+
+        self.Q[ (state, action) ] = approximateQ
+
 
     def final(self, state):
         "Called at the end of each game."
         # call the super-class final method
         PacmanQAgent.final(self, state)
-
         # did we finish training?
         if self.episodesSoFar == self.numTraining:
             # you might want to print your weights here for debugging
-            "*** YOUR CODE HERE ***"
             pass
